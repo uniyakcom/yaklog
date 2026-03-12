@@ -120,7 +120,7 @@ func FuzzAppendJSONFloat64(f *testing.F) {
 	f.Add(math.Float64bits(math.NaN()))
 	f.Add(math.Float64bits(math.Inf(1)))
 	f.Add(math.Float64bits(math.Inf(-1)))
-	f.Add(math.Float64bits(-0.0))
+	f.Add(math.Float64bits(math.Copysign(0, -1))) // 负零（IEEE 754）
 	f.Add(math.Float64bits(math.SmallestNonzeroFloat64))
 	f.Add(math.Float64bits(math.MaxFloat64))
 	f.Add(math.Float64bits(3.14159265358979))
