@@ -19,6 +19,7 @@ concurrency:
 permissions:
   contents: read
   checks: write   # golangci-lint-action 在 PR 上写入注解所需
+  actions: read  # download GitHub-hosted action tarballs
 
 jobs:
   lint:

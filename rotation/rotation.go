@@ -264,11 +264,17 @@ func (w *RotatingWriter) openLocked() error {
 
 func (w *RotatingWriter) ensureDirNotSymlink() error {
 	clean := filepath.Clean(w.opts.dir)
-	resolved, err := filepath.EvalSymlinks(clean)
+	// 仅检查日志目录自身（最后一个路径分量）是否是符号链接。
+	// 刻意不使用 filepath.EvalSymlinks 做路径字符串比较：EvalSymlinks 会展开路径中
+	// 所有中间符号链接（如 macOS 的 /var→/private/var）和系统别名（如 Windows 的
+	// 8.3 短文件名），导致合法目录被误判为 ErrSymlinkDetected。
+	// os.Lstat 只检查最后一个分量，能够准确捕获目录本身被替换为符号链接的攻击，
+	// 同时不受系统路径规范化的干扰。
+	info, err := os.Lstat(clean)
 	if err != nil {
 		return err
 	}
-	if filepath.Clean(resolved) != clean {
+	if info.Mode()&os.ModeSymlink != 0 {
 		return ErrSymlinkDetected
 	}
 	return nil

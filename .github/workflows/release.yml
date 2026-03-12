@@ -28,6 +28,7 @@ on:
 
 permissions:
   contents: write
+  actions: read  # download GitHub-hosted action tarballs
 
 jobs:
   draft:

@@ -1,4 +1,4 @@
-github.com/uniyakcom/yakjson v1.4.4 h1:I6Ya4fEoOJo6d//8jX2zz/OYRpPh2CHrn8chO6E4nf0=
-github.com/uniyakcom/yakjson v1.4.4/go.mod h1:tFMn18lZDVIJneb3i2CdlW7sJDyRF6NfV/nO/kUGnVg=
-github.com/uniyakcom/yakutil v1.3.1 h1:y5OpBxm2VfQlpAsPKMG1zNEsW9ccZkpMeGUU1eYl/EQ=
-github.com/uniyakcom/yakutil v1.3.1/go.mod h1:FV/A2sGyOrN4eXtMmu4RXL8QzrhL72TB95Z8SfzitEk=
+github.com/uniyakcom/yakjson v1.4.6 h1:PX14aWOt767GESJp2JU6e7rq+wM6Ftvsa+4oNhm5weg=
+github.com/uniyakcom/yakjson v1.4.6/go.mod h1:tFMn18lZDVIJneb3i2CdlW7sJDyRF6NfV/nO/kUGnVg=
+github.com/uniyakcom/yakutil v1.3.3 h1:PC4h6rxwbxfria8nDT4aRQOf9zYoN+2Ya3PRk5WFqfg=
+github.com/uniyakcom/yakutil v1.3.3/go.mod h1:FV/A2sGyOrN4eXtMmu4RXL8QzrhL72TB95Z8SfzitEk=

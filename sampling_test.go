@@ -271,8 +271,10 @@ func TestHashSampler_SetRateForLevel_Concurrent(t *testing.T) {
 // ─── 基准测试 ─────────────────────────────────────────────────────────────────
 
 // BenchmarkRateSampler_UnderLimit 令牌充足时的并发采样吞吐量。
+// rate/burst 使用 1_000_000_000（1e9/s）：interval=1ns，令牌几乎瞬间补充，
+// 模拟"永不限流"场景；不使用更大值以避免 interval 整数截断为 0 导致除零崩溃。
 func BenchmarkRateSampler_UnderLimit(b *testing.B) {
-	s := NewRateSampler(1<<30, 1<<30)
+	s := NewRateSampler(1_000_000_000, 1_000_000_000)
 	b.ReportAllocs()
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {

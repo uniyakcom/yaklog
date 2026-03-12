@@ -46,6 +46,7 @@ concurrency:
 
 permissions:
   contents: read
+  actions: read  # download GitHub-hosted action tarballs
 
 jobs:
   # ── Fuzz 种子回归 (仅运行已有种子语料，不生成新输入) ──────────────────────

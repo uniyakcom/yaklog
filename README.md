@@ -1,13 +1,16 @@
 # yaklog
 
+[![Go Version](https://img.shields.io/github/go-mod/go-version/uniyakcom/yaklog)](https://github.com/uniyakcom/yaklog/blob/main/go.mod)
+[![Go Reference](https://pkg.go.dev/badge/github.com/uniyakcom/yaklog.svg)](https://pkg.go.dev/github.com/uniyakcom/yaklog)
+[![Go Report Card](https://goreportcard.com/badge/github.com/uniyakcom/yaklog)](https://goreportcard.com/report/github.com/uniyakcom/yaklog)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
+[![Lint](https://github.com/uniyakcom/yaklog/actions/workflows/format.yml/badge.svg)](https://github.com/uniyakcom/yaklog/actions/workflows/format.yml)
+[![Test](https://github.com/uniyakcom/yaklog/actions/workflows/test.yml/badge.svg)](https://github.com/uniyakcom/yaklog/actions/workflows/test.yml)
+[![Fuzz](https://github.com/uniyakcom/yaklog/actions/workflows/fuzz.yml/badge.svg)](https://github.com/uniyakcom/yaklog/actions/workflows/fuzz.yml)
+
 **English** | [中文](README.zh.md)
 
-[![CI](https://github.com/uniyakcom/yaklog/actions/workflows/test.yml/badge.svg)](https://github.com/uniyakcom/yaklog/actions/workflows/test.yml)
-[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![Go Version](https://img.shields.io/badge/Go-1.25%2B-00ADD8?logo=go&logoColor=white)](https://go.dev/)
-[![Go Report Card](https://goreportcard.com/badge/github.com/uniyakcom/yaklog)](https://goreportcard.com/report/github.com/uniyakcom/yaklog)
-
-yaklog is a high-performance structured logging library for the yak\* ecosystem.
+High-performance JSON logging library for Go.
 
 - **Zero-allocation hot path**: Uses `bufpool` pre-allocated buffers + `sync.Pool`; heap allocations on the normal log path are zero.
 - **Sync / Async dual paths**: `Send()` writes synchronously in the caller's goroutine; `Post()` dispatches to a package-level worker for asynchronous batched writes.
@@ -25,7 +28,7 @@ yaklog is a high-performance structured logging library for the yak\* ecosystem.
 go get github.com/uniyakcom/yaklog
 ```
 
-> **Requirements**: Go 1.25+. No third-party external dependencies (only depends on same-ecosystem `yakutil` / `yakjson`).
+> **Requirements**: Go 1.25+.
 
 ---
 

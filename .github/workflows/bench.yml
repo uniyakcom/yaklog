@@ -29,6 +29,7 @@ concurrency:
 
 permissions:
   contents: write
+  actions: read  # download GitHub-hosted action tarballs
 
 jobs:
   # ── 第一阶段：并发矩阵，各平台独立跑基准 ──────────────────────────────────

@@ -4,6 +4,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 	"testing"
@@ -114,6 +115,9 @@ func TestCheckExistingFile_Directory(t *testing.T) {
 
 // TestCheckExistingFile_ExecutableBit 验证含可执行权限位的文件返回 ErrNotLogFile。
 func TestCheckExistingFile_ExecutableBit(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Windows 不支持 Unix 可执行权限位，chmod +x 无效")
+	}
 	f, err := os.CreateTemp(t.TempDir(), "exec*.bin")
 	if err != nil {
 		t.Fatal(err)
@@ -212,6 +216,9 @@ func TestOpenSave_ExistingBinaryFile(t *testing.T) {
 
 // TestOpenSave_ExistingExecutableFile 验证已存在的带可执行位文件被 openSave 拒绝。
 func TestOpenSave_ExistingExecutableFile(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Windows 不支持 Unix 可执行权限位，chmod +x 无效")
+	}
 	path := writeTempFile(t, []byte("#!/bin/sh\necho hello\n"))
 	_ = os.Chmod(path, 0755)
 

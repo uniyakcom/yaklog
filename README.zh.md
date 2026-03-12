@@ -1,13 +1,16 @@
 # yaklog
 
+[![Go Version](https://img.shields.io/github/go-mod/go-version/uniyakcom/yaklog)](https://github.com/uniyakcom/yaklog/blob/main/go.mod)
+[![Go Reference](https://pkg.go.dev/badge/github.com/uniyakcom/yaklog.svg)](https://pkg.go.dev/github.com/uniyakcom/yaklog)
+[![Go Report Card](https://goreportcard.com/badge/github.com/uniyakcom/yaklog)](https://goreportcard.com/report/github.com/uniyakcom/yaklog)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
+[![Lint](https://github.com/uniyakcom/yaklog/actions/workflows/format.yml/badge.svg)](https://github.com/uniyakcom/yaklog/actions/workflows/format.yml)
+[![Test](https://github.com/uniyakcom/yaklog/actions/workflows/test.yml/badge.svg)](https://github.com/uniyakcom/yaklog/actions/workflows/test.yml)
+[![Fuzz](https://github.com/uniyakcom/yaklog/actions/workflows/fuzz.yml/badge.svg)](https://github.com/uniyakcom/yaklog/actions/workflows/fuzz.yml)
+
 [English](README.md) | **中文**
 
-[![CI](https://github.com/uniyakcom/yaklog/actions/workflows/test.yml/badge.svg)](https://github.com/uniyakcom/yaklog/actions/workflows/test.yml)
-[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![Go Version](https://img.shields.io/badge/Go-1.25%2B-00ADD8?logo=go&logoColor=white)](https://go.dev/)
-[![Go Report Card](https://goreportcard.com/badge/github.com/uniyakcom/yaklog)](https://goreportcard.com/report/github.com/uniyakcom/yaklog)
-
-yaklog 是 yak\* 生态的高性能结构化日志库。
+Go语言高性能JSON日志库
 
 - **零分配热路径**：借助 `bufpool` 预分配缓冲区 + `sync.Pool`，正常日志路径堆分配为零
 - **同步 / 异步双路径**：`Send()` 在调用方 goroutine 内同步写入；`Post()` 通过全局包级 worker 异步批量写入
@@ -25,7 +28,7 @@ yaklog 是 yak\* 生态的高性能结构化日志库。
 go get github.com/uniyakcom/yaklog
 ```
 
-> **要求**：Go 1.25+。本库无任何第三方外部依赖（仅依赖同生态 `yakutil` / `yakjson`）。
+> **要求**：Go 1.25+。
 
 ---
 
