@@ -1,0 +1,63 @@
+# 2026-03-10 00:54:04 CST
+# Linux 6.17.0-14-generic x86_64
+# go1.26.1
+# CPU: Intel(R) Xeon(R) E-2186G CPU @ 3.80GHz
+
+goos: linux
+goarch: amd64
+pkg: github.com/uniyakcom/yaklog
+cpu: Intel(R) Xeon(R) E-2186G CPU @ 3.80GHz
+
+BenchmarkPost_JSON-12                 	11754048	       323.1 ns/op	       0 B/op	       0 allocs/op
+BenchmarkPost_JSON-12                 	11308545	       315.5 ns/op	       0 B/op	       0 allocs/op
+BenchmarkPost_JSON-12                 	11698582	       311.3 ns/op	       0 B/op	       0 allocs/op
+BenchmarkPost_Text-12                 	10732035	       335.1 ns/op	       0 B/op	       0 allocs/op
+BenchmarkPost_Text-12                 	11195337	       328.9 ns/op	       0 B/op	       0 allocs/op
+BenchmarkPost_Text-12                 	11033094	       341.2 ns/op	       0 B/op	       0 allocs/op
+BenchmarkSend_JSON-12                 	40748469	        84.49 ns/op	       0 B/op	       0 allocs/op
+BenchmarkSend_JSON-12                 	41828692	        88.10 ns/op	       0 B/op	       0 allocs/op
+BenchmarkSend_JSON-12                 	40219406	        96.11 ns/op	       0 B/op	       0 allocs/op
+BenchmarkSend_Disabled-12             	1000000000	         2.900 ns/op	       0 B/op	       0 allocs/op
+BenchmarkSend_Disabled-12             	1000000000	         3.242 ns/op	       0 B/op	       0 allocs/op
+BenchmarkSend_Disabled-12             	1000000000	         3.073 ns/op	       0 B/op	       0 allocs/op
+BenchmarkPost_Dropped-12              	13375776	       274.8 ns/op	       0 B/op	       0 allocs/op
+BenchmarkPost_Dropped-12              	12577636	       264.8 ns/op	       0 B/op	       0 allocs/op
+BenchmarkPost_Dropped-12              	13794648	       259.2 ns/op	       0 B/op	       0 allocs/op
+BenchmarkEncoder_JSON-12              	51011949	        71.82 ns/op	       0 B/op	       0 allocs/op
+BenchmarkEncoder_JSON-12              	54497251	        70.80 ns/op	       0 B/op	       0 allocs/op
+BenchmarkEncoder_JSON-12              	55205738	        65.68 ns/op	       0 B/op	       0 allocs/op
+BenchmarkEncoder_Text-12              	81325886	        43.96 ns/op	       0 B/op	       0 allocs/op
+BenchmarkEncoder_Text-12              	82488117	        43.97 ns/op	       0 B/op	       0 allocs/op
+BenchmarkEncoder_Text-12              	82302381	        43.85 ns/op	       0 B/op	       0 allocs/op
+BenchmarkAppendJSONStr-12             	200569380	        17.97 ns/op	       0 B/op	       0 allocs/op
+BenchmarkAppendJSONStr-12             	178671088	        18.18 ns/op	       0 B/op	       0 allocs/op
+BenchmarkAppendJSONStr-12             	201794479	        18.06 ns/op	       0 B/op	       0 allocs/op
+BenchmarkLabel_Chain-12               	18034134	       198.8 ns/op	     584 B/op	       2 allocs/op
+BenchmarkLabel_Chain-12               	18432404	       198.6 ns/op	     584 B/op	       2 allocs/op
+BenchmarkLabel_Chain-12               	18244375	       207.2 ns/op	     584 B/op	       2 allocs/op
+BenchmarkSend_Parallel-12             	252007934	        14.28 ns/op	       0 B/op	       0 allocs/op
+BenchmarkSend_Parallel-12             	254833144	        14.18 ns/op	       0 B/op	       0 allocs/op
+BenchmarkSend_Parallel-12             	236325741	        15.58 ns/op	       0 B/op	       0 allocs/op
+BenchmarkPost_Parallel-12             	24544872	       157.2 ns/op	       1 B/op	       0 allocs/op
+BenchmarkPost_Parallel-12             	24167742	       158.6 ns/op	       1 B/op	       0 allocs/op
+BenchmarkPost_Parallel-12             	24223378	       156.5 ns/op	       1 B/op	       0 allocs/op
+Benchmark10Fields_Standard-12         	52539332	        71.37 ns/op	       0 B/op	       0 allocs/op
+Benchmark10Fields_Standard-12         	55866061	        66.38 ns/op	       0 B/op	       0 allocs/op
+Benchmark10Fields_Standard-12         	51555050	        67.19 ns/op	       0 B/op	       0 allocs/op
+Benchmark10Fields_DirectPath-12       	61829804	        58.61 ns/op	       0 B/op	       0 allocs/op
+Benchmark10Fields_DirectPath-12       	62480148	        59.10 ns/op	       0 B/op	       0 allocs/op
+Benchmark10Fields_DirectPath-12       	59395698	        59.09 ns/op	       0 B/op	       0 allocs/op
+BenchmarkKeyEncode_EscapeLoop-12      	46094144	        76.57 ns/op	       0 B/op	       0 allocs/op
+BenchmarkKeyEncode_EscapeLoop-12      	46003047	        75.94 ns/op	       0 B/op	       0 allocs/op
+BenchmarkKeyEncode_EscapeLoop-12      	47109432	        76.71 ns/op	       0 B/op	       0 allocs/op
+BenchmarkKeyEncode_DirectAppend-12    	530216100	         6.705 ns/op	       0 B/op	       0 allocs/op
+BenchmarkKeyEncode_DirectAppend-12    	536528479	         6.732 ns/op	       0 B/op	       0 allocs/op
+BenchmarkKeyEncode_DirectAppend-12    	535498711	         6.739 ns/op	       0 B/op	       0 allocs/op
+BenchmarkRotatingWriter_Write-12                	 3676747	       995.8 ns/op	       0 B/op	       0 allocs/op
+BenchmarkRotatingWriter_Write-12                	 3641624	       994.9 ns/op	       0 B/op	       0 allocs/op
+BenchmarkRotatingWriter_Write-12                	 3674034	       991.2 ns/op	       0 B/op	       0 allocs/op
+BenchmarkRotatingWriter_WriteWithRotation-12    	  434132	      7225 ns/op	     817 B/op	       9 allocs/op
+BenchmarkRotatingWriter_WriteWithRotation-12    	  493305	      7373 ns/op	     825 B/op	       9 allocs/op
+BenchmarkRotatingWriter_WriteWithRotation-12    	  494061	      7302 ns/op	     824 B/op	       9 allocs/op
+
+PASS

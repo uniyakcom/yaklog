@@ -1,0 +1,84 @@
+# format.yml — 代码格式与静态分析门禁
+#
+# 职责：确保所有提交到 main 的代码符合 gofmt 标准，并通过 go vet 和 golangci-lint 静态分析。
+# 触发：push to main/master 和 Pull Request。
+# 失败时：阻止 PR 合并（需在仓库 Branch Rules 中将本工作流设为必须通过的状态检查）。
+name: Lint
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+# 同一分支/PR 有新提交时取消旧运行，避免 runner 积压
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  checks: write   # golangci-lint-action 在 PR 上写入注解所需
+
+jobs:
+  lint:
+    timeout-minutes: 10
+    runs-on: ubuntu-latest
+    steps:
+      # 检出代码，默认 fetch-depth=1 即可（无需历史记录）
+      - uses: actions/checkout@v6
+
+      # 安装 go.mod 中声明的 Go 版本，保证与开发环境一致
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: 'go.mod'
+
+      # gofmt -l 列出未格式化的文件（排除 _vendor 等下划线开头目录）
+      # 有任何文件未格式化则打印提示并以 exit 1 失败
+      - name: Check formatting
+        run: |
+          BAD=$(gofmt -l . | grep -v '^_' || true)
+          if [ -n "$BAD" ]; then
+            echo "❌ 以下文件未格式化:"
+            echo "$BAD"
+            echo ""
+            echo "请运行: gofmt -w ."
+            exit 1
+          fi
+          echo "✅ 格式检查通过"
+
+      # go vet 检查常见错误：错误的格式化动词、不可达代码、互斥锁复制等
+      - name: Vet
+        run: go vet ./...
+
+      # golangci-lint: 使用官方 action，配置来自 .golangci.yml
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v9
+        with:
+          version: latest
+
+      # 检查 go.mod 中是否残留本地 replace 指令（发布时必须移除）
+      - name: Check no local replace directives
+        run: |
+          if grep -E '^replace .* => \.\./' go.mod; then
+            echo "❌ go.mod 含本地 replace 指令，发布前请移除"
+            exit 1
+          fi
+          echo "✅ go.mod 无本地 replace 指令"
+
+      # 检查 _examples/ 中使用 RotatingWriter 的示例是否都调用了 defer closer.Close()
+      # 仅检查包含 rotation.New 的文件，避免误报非文件输出示例
+      - name: Check examples call closer.Close()
+        run: |
+          MISSING=""
+          for f in $(grep -rl 'rotation\.New' _examples/ 2>/dev/null || true); do
+            if ! grep -q 'closer\.Close\(\)' "$f"; then
+              MISSING="$MISSING\n  $f"
+            fi
+          done
+          if [ -n "$MISSING" ]; then
+            echo "❌ 以下示例文件使用 rotation.New 但未调用 closer.Close():"
+            printf "%b\n" "$MISSING"
+            exit 1
+          fi
+          echo "✅ 所有使用 RotatingWriter 的示例均调用了 closer.Close()"

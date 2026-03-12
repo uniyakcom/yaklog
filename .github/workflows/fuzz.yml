@@ -1,0 +1,202 @@
+# fuzz.yml — Fuzz 测试（种子回归 + Nightly 深度模糊 + Corpus Cache）
+#
+# 职责：
+#   fuzz-seed:    push/PR 时运行已有种子语料，确保历史崩溃用例不再复现（快速，< 2min）
+#   fuzz-nightly: 每日 UTC 03:00 对所有目标各运行 5 分钟，发现新崩溃；
+#                 语料库通过 actions/cache 跨 run 累积，加速覆盖增长。
+#
+# Corpus Cache 策略：
+#   - 每个 nightly 运行结束后将 testdata/fuzz/ 保存为 cache
+#   - restore-keys 前缀匹配，始终恢复最新语料库，实现跨周累积
+#   - fuzz-seed 也恢复缓存，确保 seed 模式能验证 nightly 发现的新语料
+#
+# 崩溃处理（无需下载 Artifact）：
+#   nightly 发现 crash 时 Go 会将触发崩溃的输入写入 testdata/fuzz/{Target}/
+#   崩溃文件内容直接打印到 Job Summary，提供 3 步可复制粘贴命令：
+#     ① mkdir + cat heredoc  → 本地重建崩溃种子文件
+#     ② go test -run=...     → 本地复现崩溃
+#     ③ git add + commit     → 提交为永久回归种子
+#   corpus cache（always() 保存）同步持久化崩溃文件，Summary 作为操作入口。
+#
+# Fuzz 目标清单（更新时同步修改 fuzz-nightly matrix）：
+#   ┌─ 编解码器 ──────────────────────────────────────────────────────────────
+#   │  FuzzJSONEncoder       — jsonEncoder 完整路径：appendStr/finalize 输出合法 JSON
+#   │  FuzzTextEncoder       — textEncoder 完整路径：行尾 \n，无裸 \r 注入
+#   ├─ 工具函数 ──────────────────────────────────────────────────────────────
+#   │  FuzzAppendJSONStr     — appendJSONStr JSON 字符串 RoundTrip 等值验证
+#   │  FuzzAppendJSONFloat64 — appendJSONFloat64 NaN/Inf/任意 bits 输出合法 JSON
+#   └─ 安全函数 ──────────────────────────────────────────────────────────────
+#      FuzzSanitizeTag       — sanitizeTag 控制字符消除 + 长度上限不变量
+name: Fuzz
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+  schedule:
+    # 每日 UTC 03:00 跑 nightly fuzz
+    - cron: '0 3 * * *'
+
+# push/PR：同一分支有新提交时取消旧运行，避免 runner 积压
+# schedule：nightly 使用独立 group，防止被 push 事件意外取消
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name == 'schedule' && 'nightly' || github.ref }}
+  cancel-in-progress: ${{ github.event_name != 'schedule' }}
+
+permissions:
+  contents: read
+
+jobs:
+  # ── Fuzz 种子回归 (仅运行已有种子语料，不生成新输入) ──────────────────────
+  fuzz-seed:
+    if: github.event_name != 'schedule'
+    # 3 个目标 × 每个 ~2-3s 种子运行，加上 checkout/setup/缓存恢复，给 8 分钟充足余量
+    timeout-minutes: 8
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: 'go.mod'
+          cache: false
+
+      # 恢复累积语料库（含 nightly 发现的新语料），加强种子回归覆盖
+      - name: Restore fuzz corpus cache
+        uses: actions/cache/restore@v5
+        with:
+          path: testdata/fuzz/
+          key: fuzz-corpus-linux-${{ github.run_id }}
+          restore-keys: |
+            fuzz-corpus-linux-
+
+      # 预编译一次，节省多个目标逐个重新编译的开销
+      - name: Build fuzz test binary
+        run: go test -c -o /tmp/fuzz.test .
+
+      # 用 -test.run（不带 -test.fuzz）运行种子：Go 1.18+ 中 Fuzz 函数无 -fuzz 标志时
+      # 自动以普通测试身份执行所有种子语料，无需 fuzzcachedir，快速且无副作用。
+      # -test.timeout=60s：单目标上限；种子运行实际 <100ms
+      - name: Fuzz seed corpus (all targets)
+        run: |
+          echo "Running all fuzz targets with seed corpus only..."
+          FUZZ_TARGETS=$(/tmp/fuzz.test -test.list='Fuzz.*' 2>/dev/null | grep '^Fuzz' | sort -u)
+          for target in $FUZZ_TARGETS; do
+            echo "  → $target"
+            /tmp/fuzz.test -test.run="^${target}\$" -test.timeout=60s
+          done
+          echo "✅ All fuzz seed corpus passed"
+
+  # ── Nightly Fuzz：每目标 5 min，并发矩阵，语料库累积缓存 ────────────────
+  #
+  # fail-fast: false 确保单个目标崩溃不中止其他目标
+  # 每个目标独立为一个 matrix job，充分利用 GitHub Actions 并发
+  fuzz-nightly:
+    if: github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    # 5m fuzz + 编译(~30s) + cache restore/save(~20s) + setup(~30s) ≈ 7min，给 12 分钟有充足余量
+    timeout-minutes: 12
+    strategy:
+      fail-fast: false
+      matrix:
+        fuzz-target:
+          # ── 编解码器 ───────────────────────────────────────────────────
+          - FuzzJSONEncoder
+          - FuzzTextEncoder
+          # ── 工具函数 ───────────────────────────────────────────────────
+          - FuzzAppendJSONStr
+          - FuzzAppendJSONFloat64
+          # ── 安全函数 ───────────────────────────────────────────────────
+          - FuzzSanitizeTag
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: 'go.mod'
+          cache: false
+
+      # 恢复该目标已有语料（前缀匹配，始终取最新版本）
+      # 利用 coverage-guided fuzzing 的增量特性：新 run 基于旧语料继续探索
+      - name: Restore fuzz corpus cache
+        id: corpus-restore
+        uses: actions/cache/restore@v5
+        with:
+          path: testdata/fuzz/${{ matrix.fuzz-target }}/
+          key: fuzz-corpus-linux-${{ matrix.fuzz-target }}-${{ github.run_id }}
+          restore-keys: |
+            fuzz-corpus-linux-${{ matrix.fuzz-target }}-
+
+      # -run='^$':     跳过所有普通测试，只运行 Fuzz
+      # -fuzztime=5m:  每个目标运行 5 分钟（coverage-guided 持续探索新路径）
+      # -timeout=10m:  超时保护（fuzztime + 启动 + 编译开销）
+      # CGO_ENABLED=1: race detector 依赖 cgo（nightly 可选加 -race，但会慢 3×）
+      - name: Fuzz ${{ matrix.fuzz-target }} (5 min)
+        env:
+          CGO_ENABLED: "1"
+        run: |
+          go test -run='^$' -fuzz='^${{ matrix.fuzz-target }}$' -fuzztime=5m -timeout=10m .
+
+      # 保存累积语料库（无论是否崩溃都保存，崩溃输入本身也是有价值的种子）
+      # always() 确保即使 fuzz 步骤发现 bug 也会执行缓存保存
+      - name: Save fuzz corpus cache
+        if: always()
+        uses: actions/cache/save@v5
+        with:
+          path: testdata/fuzz/${{ matrix.fuzz-target }}/
+          key: fuzz-corpus-linux-${{ matrix.fuzz-target }}-${{ github.run_id }}
+
+      # 发现崩溃时，Go 会将触发崩溃的输入写入 testdata/fuzz/{Target}/
+      # 将崩溃文件内容直接打印到 Job Summary，提供可复制粘贴的 3 步命令：
+      #   步骤 1：重建崩溃种子文件（cat heredoc）
+      #   步骤 2：本地复现崩溃（go test -run）
+      #   步骤 3：提交为永久回归种子（git add + commit）
+      # corpus cache（always() 保存）已持久化崩溃文件，Summary 仅作人工操作入口。
+      - name: Print crash commands to summary
+        if: failure()
+        run: |
+          TARGET="${{ matrix.fuzz-target }}"
+          CORPUS_DIR="testdata/fuzz/${TARGET}"
+
+          # 找到崩溃期间新生成的文件（git 未跟踪 = Fuzz 运行写入，非仓库原有种子）
+          CRASH_FILES=$(git status --porcelain -- "$CORPUS_DIR" 2>/dev/null \
+            | awk '$1=="??" {print $2}')
+
+          if [ -z "$CRASH_FILES" ]; then
+            echo "⚠️ No new crash files detected in $CORPUS_DIR" >&2
+            exit 0
+          fi
+
+          {
+            echo "## 🔴 Fuzz 崩溃：\`${TARGET}\`"
+            echo ""
+            echo "> **无需下载 Artifact**，复制以下命令在本地直接执行即可。"
+            echo ""
+
+            for crash_file in $CRASH_FILES; do
+              filename=$(basename "$crash_file")
+              echo "---"
+              echo "### 崩溃输入：\`${filename}\`"
+              echo ""
+              echo "**① 重建崩溃种子文件**"
+              echo '```sh'
+              printf 'mkdir -p %s\n' "$CORPUS_DIR"
+              printf "cat > %s << 'FUZZ_EOF'\n" "$crash_file"
+              cat "$crash_file"
+              printf 'FUZZ_EOF\n'
+              echo '```'
+              echo ""
+              echo "**② 复现崩溃**"
+              echo '```sh'
+              printf "go test -run='^%s/%s$' . -v\n" "$TARGET" "$filename"
+              echo '```'
+              echo ""
+              echo "**③ 修复后提交为永久回归种子**"
+              echo '```sh'
+              printf 'git add %s\n' "$crash_file"
+              printf "git commit -m \"test: add fuzz regression seed for %s\"\n" "$TARGET"
+              echo '```'
+              echo ""
+            done
+          } >> "$GITHUB_STEP_SUMMARY"

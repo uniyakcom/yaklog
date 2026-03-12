@@ -1,0 +1,79 @@
+# yaklog vs mainstream Go logging libraries — benchmark results
+# Generated: 2026-03-09 03:28:31 CST
+# Linux 6.17.0-14-generic x86_64
+# go1.26.1
+# CPU: Intel(R) Xeon(R) E-2186G CPU @ 3.80GHz
+# GOMAXPROCS: 12
+# benchtime: 3s  count: 3
+# Output: io.Discard (no I/O noise)
+# yaklog: Send() synchronous path + TimeOff (no timestamp)
+# zerolog: New(io.Discard) default (no timestamp) — equal-payload comparison
+#
+# Reference: _benchmarks/README.md
+# ──────────────────────────────────────────────────────────────────────────────
+
+goos: linux
+goarch: amd64
+pkg: github.com/uniyakcom/yaklog/_benchmarks/bench
+cpu: Intel(R) Xeon(R) E-2186G CPU @ 3.80GHz
+BenchmarkStaticMsg/yaklog-12 	242363050	        13.70 ns/op	       0 B/op	       0 allocs/op
+BenchmarkStaticMsg/yaklog-12 	248031091	        15.09 ns/op	       0 B/op	       0 allocs/op
+BenchmarkStaticMsg/yaklog-12 	263129337	        12.75 ns/op	       0 B/op	       0 allocs/op
+BenchmarkStaticMsg/zerolog-12         	199961668	        18.40 ns/op	       0 B/op	       0 allocs/op
+BenchmarkStaticMsg/zerolog-12         	198943083	        17.42 ns/op	       0 B/op	       0 allocs/op
+BenchmarkStaticMsg/zerolog-12         	212235504	        16.99 ns/op	       0 B/op	       0 allocs/op
+BenchmarkStaticMsg/zap-12             	62662482	        48.72 ns/op	       0 B/op	       0 allocs/op
+BenchmarkStaticMsg/zap-12             	79483280	        46.86 ns/op	       0 B/op	       0 allocs/op
+BenchmarkStaticMsg/zap-12             	78416772	        45.61 ns/op	       0 B/op	       0 allocs/op
+BenchmarkStaticMsg/zap_sugared-12     	77130906	        47.75 ns/op	       0 B/op	       0 allocs/op
+BenchmarkStaticMsg/zap_sugared-12     	62650922	        48.24 ns/op	       0 B/op	       0 allocs/op
+BenchmarkStaticMsg/zap_sugared-12     	70793649	        48.98 ns/op	       0 B/op	       0 allocs/op
+BenchmarkStaticMsg/logrus-12          	 1104388	      3253 ns/op	    1585 B/op	      28 allocs/op
+BenchmarkStaticMsg/logrus-12          	 1119289	      3217 ns/op	    1585 B/op	      28 allocs/op
+BenchmarkStaticMsg/logrus-12          	 1110110	      3203 ns/op	    1585 B/op	      28 allocs/op
+BenchmarkStaticMsg/slog_json-12       	24575402	       134.2 ns/op	       0 B/op	       0 allocs/op
+BenchmarkStaticMsg/slog_json-12       	22737949	       133.8 ns/op	       0 B/op	       0 allocs/op
+BenchmarkStaticMsg/slog_json-12       	24115639	       133.1 ns/op	       0 B/op	       0 allocs/op
+BenchmarkStaticMsg/stdlib-12          	1000000000	         0.6337 ns/op	       0 B/op	       0 allocs/op
+BenchmarkStaticMsg/stdlib-12          	1000000000	         0.6388 ns/op	       0 B/op	       0 allocs/op
+BenchmarkStaticMsg/stdlib-12          	1000000000	         0.7258 ns/op	       0 B/op	       0 allocs/op
+Benchmark10Fields/yaklog-12           	50521833	        66.46 ns/op	       0 B/op	       0 allocs/op
+Benchmark10Fields/yaklog-12           	47777211	        66.34 ns/op	       0 B/op	       0 allocs/op
+Benchmark10Fields/yaklog-12           	53729690	        65.84 ns/op	       0 B/op	       0 allocs/op
+Benchmark10Fields/zerolog-12          	51837939	        69.79 ns/op	       0 B/op	       0 allocs/op
+Benchmark10Fields/zerolog-12          	51480081	        70.00 ns/op	       0 B/op	       0 allocs/op
+Benchmark10Fields/zerolog-12          	51519866	        69.55 ns/op	       0 B/op	       0 allocs/op
+Benchmark10Fields/zap-12              	 7272025	       458.1 ns/op	     732 B/op	       2 allocs/op
+Benchmark10Fields/zap-12              	 7447368	       462.5 ns/op	     732 B/op	       2 allocs/op
+Benchmark10Fields/zap-12              	 7502564	       464.9 ns/op	     732 B/op	       2 allocs/op
+Benchmark10Fields/zap_sugared-12      	 5661820	       615.9 ns/op	    1438 B/op	       2 allocs/op
+Benchmark10Fields/zap_sugared-12      	 5450965	       620.3 ns/op	    1438 B/op	       2 allocs/op
+Benchmark10Fields/zap_sugared-12      	 5574720	       619.4 ns/op	    1438 B/op	       2 allocs/op
+Benchmark10Fields/logrus-12           	  275683	     11632 ns/op	    4745 B/op	      68 allocs/op
+Benchmark10Fields/logrus-12           	  276000	     11391 ns/op	    4744 B/op	      68 allocs/op
+Benchmark10Fields/logrus-12           	  291237	     11244 ns/op	    4744 B/op	      68 allocs/op
+Benchmark10Fields/slog_json-12        	 7245676	       466.4 ns/op	     225 B/op	       3 allocs/op
+Benchmark10Fields/slog_json-12        	 6936038	       475.1 ns/op	     225 B/op	       3 allocs/op
+Benchmark10Fields/slog_json-12        	 6769771	       469.2 ns/op	     225 B/op	       3 allocs/op
+BenchmarkContextFields/yaklog-12      	250718442	        14.76 ns/op	       0 B/op	       0 allocs/op
+BenchmarkContextFields/yaklog-12      	242431495	        14.14 ns/op	       0 B/op	       0 allocs/op
+BenchmarkContextFields/yaklog-12      	253688937	        13.85 ns/op	       0 B/op	       0 allocs/op
+BenchmarkContextFields/zerolog-12     	201159350	        18.11 ns/op	       0 B/op	       0 allocs/op
+BenchmarkContextFields/zerolog-12     	201020904	        18.39 ns/op	       0 B/op	       0 allocs/op
+BenchmarkContextFields/zerolog-12     	201067062	        17.56 ns/op	       0 B/op	       0 allocs/op
+BenchmarkContextFields/zap-12         	72835932	        47.86 ns/op	       0 B/op	       0 allocs/op
+BenchmarkContextFields/zap-12         	64587777	        48.31 ns/op	       0 B/op	       0 allocs/op
+BenchmarkContextFields/zap-12         	76862257	        47.60 ns/op	       0 B/op	       0 allocs/op
+BenchmarkContextFields/zap_sugared-12 	57145311	        54.08 ns/op	       0 B/op	       0 allocs/op
+BenchmarkContextFields/zap_sugared-12 	72238688	        50.44 ns/op	       0 B/op	       0 allocs/op
+BenchmarkContextFields/zap_sugared-12 	73434878	        49.34 ns/op	       0 B/op	       0 allocs/op
+BenchmarkContextFields/logrus-12      	  372513	      9554 ns/op	    3290 B/op	      59 allocs/op
+BenchmarkContextFields/logrus-12      	  323793	      9565 ns/op	    3291 B/op	      59 allocs/op
+BenchmarkContextFields/logrus-12      	  312753	      9710 ns/op	    3290 B/op	      59 allocs/op
+BenchmarkContextFields/slog_json-12   	24819952	       126.6 ns/op	       0 B/op	       0 allocs/op
+BenchmarkContextFields/slog_json-12   	22478106	       142.0 ns/op	       0 B/op	       0 allocs/op
+BenchmarkContextFields/slog_json-12   	23503760	       145.4 ns/op	       0 B/op	       0 allocs/op
+PASS
+ok  	github.com/uniyakcom/yaklog/_benchmarks/bench	258.540s
+
+# Done: 2026-03-09 03:32:50

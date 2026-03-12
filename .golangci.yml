@@ -1,0 +1,74 @@
+version: "2"
+
+run:
+  timeout: 120s
+  modules-download-mode: readonly
+
+linters:
+  default: none
+  enable:
+    - govet          # go vet 静态分析
+    - errcheck       # 未检查的 error 返回值
+    - staticcheck    # 全面静态分析（SA/S/QF/U 规则集，含原 gosimple/unused 功能）
+    - ineffassign    # 赋值后未使用的变量
+    - gosec          # 安全问题扫描（OWASP）
+    - misspell       # 拼写错误
+  settings:
+    govet:
+      enable-all: true
+      disable:
+        - fieldalignment
+        - shadow
+
+    errcheck:
+      check-blank: false
+      exclude-functions:
+        - fmt.Fprint
+        - fmt.Fprintf
+        - fmt.Fprintln
+
+    staticcheck:
+      checks:
+        - "all"
+        - "-SA1019"
+        - "-ST1000"
+        - "-ST1003"
+        # SA4026: fuzz_test.go 中 math.Float64bits(-0.0) 语义已知（compile-time 值为 0），
+        # 作为 fuzz 种子存在，不影响正确性
+        - "-SA4026"
+        # ST1012: bench_test.go 中 bench10FieldsErr 命名遵循基准测试约定而非 errFoo 约定
+        - "-ST1012"
+
+    gosec:
+      excludes:
+        # G103: rotation/open_secure_unix.go 中的 syscall 指针转换已审计
+        - G103
+        # G115: integer overflow conversion — 日志字段编码中的位操作已验证
+        - G115
+        # G304: sink.go 中的文件路径来自配置（已通过 Options 验证），非用户输入
+        - G304
+        # G306: rotation_test.go 中的 WriteFile 权限为测试专用临时文件
+        - G306
+        # G302: sink_test.go 中创建日志文件权限为测试专用（非生产路径）
+        - G302
+
+  exclusions:
+    rules:
+      # 测试文件：Close() 错误在测试清理代码中忽略是可接受的模式
+      - path: "_test\\.go$"
+        linters: [errcheck]
+      # 测试文件：弱随机数用于测试数据，非密码学场景
+      - path: "_test\\.go$"
+        linters: [gosec]
+        text: "G404"
+      # 测试文件：错误变量命名约定（bench_test.go 保持现有命名）
+      - path: "_test\\.go$"
+        linters: [staticcheck]
+        text: "ST1012"
+      # 基准测试：err 有时故意忽略
+      - path: "_bench_test\\.go$|bench_test\\.go$"
+        linters: [errcheck]
+
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0

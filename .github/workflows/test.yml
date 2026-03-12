@@ -1,0 +1,101 @@
+# test.yml — 跨平台单元测试与竞态检测
+#
+# 职责：在 4 个平台（2×amd64 + 2×arm64）下运行全量测试，
+#        并开启 -race 检测并发数据竞争。
+# 触发：push to main/master 和 Pull Request。
+# 矩阵：Linux/Windows/macOS × amd64/arm64，覆盖主流部署平台兼容性。
+# 失败时：阻止 PR 合并（需在仓库 Branch Rules 中将本工作流设为必须通过的状态检查）。
+name: Test
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+# 同一分支/PR 有新提交时取消旧运行，避免 runner 积压
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      max-parallel: 2   # 错峰申请 arm64 runner，避免同时争抢导致排队超时
+      matrix:
+        # 4 平台覆盖主流部署场景：Linux/Windows/macOS × amd64/arm64
+        include:
+          - os: ubuntu-latest      # Linux amd64
+            go: '1.25'
+          - os: windows-latest     # Windows amd64
+            go: '1.25'
+          - os: ubuntu-24.04-arm   # Linux arm64
+            go: '1.25'
+          - os: macos-latest       # macOS arm64
+            go: '1.25'
+    runs-on: ${{ matrix.os }}
+    steps:
+      # 检出代码
+      - uses: actions/checkout@v6
+
+      # 安装指定 Go 版本（与 bench 矩阵相同，保证测试与基准使用同一编译器）
+      # cache: false — 无外部依赖（go.sum 不存在），禁用缓存避免警告
+      - uses: actions/setup-go@v6
+        with:
+          go-version: ${{ matrix.go }}
+          cache: false
+
+      # -race:    开启竞态检测（检测并发 map 读写、channel 误用等）
+      # -short:   跳过标记了 testing.Short() 的耗时测试，加快 CI 速度
+      # -count=1: 禁用测试缓存，确保每次都真实执行
+      # -timeout: 单次测试超时保护，防止 hang 卡死 runner
+      - name: Vet
+        run: go vet ./...
+
+      - name: Test (race)
+        run: go test ./... -race -short -count=1 -timeout=120s
+
+      # rotation 子包覆盖率门禁（仅 Linux amd64：diskspace_unix.go 路径仅在 Unix 上有意义）
+      - name: Coverage gate (rotation, Linux amd64 only)
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          go test ./rotation/... -coverprofile=rotation_cover.out -covermode=atomic -count=1 -timeout=60s
+          COVERAGE=$(go tool cover -func=rotation_cover.out | grep '^total:' | awk '{print $3}' | tr -d '%')
+          echo "rotation coverage: ${COVERAGE}%"
+          # awk 比较：覆盖率低于 60% 时失败
+          awk -v c="$COVERAGE" 'BEGIN { if (c+0 < 60) { print "❌ rotation coverage " c "% < 60%"; exit 1 } print "✅ rotation coverage " c "%" }'
+
+      # adapter 子包覆盖率门禁（仅 Linux amd64）
+      - name: Coverage gate (adapter, Linux amd64 only)
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          go test ./adapter/... -coverprofile=adapter_cover.out -covermode=atomic -count=1 -timeout=60s
+          COVERAGE=$(go tool cover -func=adapter_cover.out | grep '^total:' | awk '{print $3}' | tr -d '%')
+          echo "adapter coverage: ${COVERAGE}%"
+          awk -v c="$COVERAGE" 'BEGIN { if (c+0 < 70) { print "❌ adapter coverage " c "% < 70%"; exit 1 } print "✅ adapter coverage " c "%" }'
+
+      # 确保 _examples/ 下所有示例始终可编译，与主包 API 保持同步
+      - name: Build examples
+        run: go build ./...
+        working-directory: _examples
+
+  # 矩阵 job 名称带平台后缀（如 test (ubuntu-latest, 1.25)），无法直接作为 required check。
+  # 此汇总 job 等待所有矩阵完成后以固定名称 "Test / all-pass" 上报统一状态，
+  # 在 Branch Ruleset 中将 "Test / all-pass" 设为 required check 即可。
+  all-pass:
+    needs: test
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check all matrix results
+        run: |
+          if [ "${{ needs.test.result }}" != "success" ]; then
+            echo "❌ One or more test matrix jobs failed or were cancelled."
+            exit 1
+          fi
+          echo "✅ All test matrix jobs passed."

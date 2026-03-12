@@ -1,0 +1,231 @@
+# bench.yml — 跨平台性能基准测试与结果归档
+#
+# 职责：在 4 个平台（2×amd64 + 2×arm64）并发跑基准，PR 时实时对比性能差异，
+#       结果归档到独立的 bench 分支（不污染 main 历史）。
+#
+# 两阶段设计（解决并发写冲突）：
+#   bench job（×4 并发）：各平台独立跑基准，结果上传为 Artifact
+#   save  job（×1 汇总）：等所有 bench job 完成后，统一拉取 Artifact 并一次性推送
+#
+# bench 分支目录结构（孤立分支，不存在时自动创建）：
+#   main/             — push to main 后更新（每次合并代码后刷新基线）
+#   pr-{N}/           — PR #{N} 触发时写入（用于 PR 前后横向对比）
+#   manual/YYYYMMDD/  — 手动触发时写入
+#
+# 文件命名：{os}-{arch}.txt，头部含 os/arch/kernel/go/sha/date 元数据
+name: Bench
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+  workflow_dispatch:
+
+# 同一分支/PR 有新提交时取消旧运行，避免 runner 积压
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+  # ── 第一阶段：并发矩阵，各平台独立跑基准 ──────────────────────────────────
+  bench:
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      max-parallel: 2   # 错峰申请 arm64 runner，避免同时争抢导致排队超时
+      matrix:
+        include:
+          # amd64 平台
+          - os: ubuntu-latest      # Ubuntu 24.04, Linux 6.8.x, x86_64
+            arch: amd64
+          - os: windows-latest     # Windows Server 2025, x86_64
+            arch: amd64
+          # arm64 平台
+          - os: ubuntu-24.04-arm   # Ubuntu 24.04, Linux 6.8.x, aarch64
+            arch: arm64
+          - os: macos-latest       # macOS 15, Apple M 系列, aarch64
+            arch: arm64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      # cache: false — 无外部依赖（go.sum 不存在），禁用缓存避免警告
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: 'go.mod'
+          cache: false
+
+      - name: Install benchstat
+        run: go install golang.org/x/perf/cmd/benchstat@latest
+        shell: bash
+
+      # ── 跑当前 HEAD（PR 和 push 都跑）────────────────────────────────────
+      - name: Benchmark HEAD
+        run: |
+          {
+            echo "# os:     ${{ matrix.os }}"
+            echo "# arch:   ${{ matrix.arch }}"
+            echo "# kernel: $(uname -srm 2>/dev/null || echo 'windows')"
+            echo "# go:     $(go version)"
+            echo "# sha:    ${{ github.sha }}"
+            echo "# ref:    ${{ github.ref }}"
+            echo "# date:   $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          } > "$RUNNER_TEMP/head.txt"
+          go test ./ \
+            -bench='^Benchmark' \
+            -benchmem -benchtime=2s -count=6 -run='^$' -timeout=600s \
+            > "$RUNNER_TEMP/raw_head.txt" 2>&1 || { cat "$RUNNER_TEMP/raw_head.txt"; exit 1; }
+          grep '^Benchmark' "$RUNNER_TEMP/raw_head.txt" >> "$RUNNER_TEMP/head.txt" || true
+          cat "$RUNNER_TEMP/head.txt"
+        shell: bash
+
+      # ── 跑 PR base（仅 PR 触发）──────────────────────────────────────────
+      - name: Checkout base commit
+        if: github.event_name == 'pull_request'
+        run: git checkout ${{ github.event.pull_request.base.sha }}
+        shell: bash
+
+      - name: Benchmark base commit
+        if: github.event_name == 'pull_request'
+        run: |
+          {
+            echo "# os:     ${{ matrix.os }}"
+            echo "# arch:   ${{ matrix.arch }}"
+            echo "# kernel: $(uname -srm 2>/dev/null || echo 'windows')"
+            echo "# go:     $(go version)"
+            echo "# sha:    ${{ github.event.pull_request.base.sha }}"
+            echo "# ref:    ${{ github.base_ref }}"
+            echo "# date:   $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          } > "$RUNNER_TEMP/base.txt"
+          go test ./ \
+            -bench='^Benchmark' \
+            -benchmem -benchtime=2s -count=6 -run='^$' -timeout=600s \
+            > "$RUNNER_TEMP/raw_base.txt" 2>&1 || { cat "$RUNNER_TEMP/raw_base.txt"; exit 1; }
+          grep '^Benchmark' "$RUNNER_TEMP/raw_base.txt" >> "$RUNNER_TEMP/base.txt" || true
+        shell: bash
+
+      - name: Compare HEAD vs base (benchstat)
+        if: github.event_name == 'pull_request'
+        run: |
+          benchstat "$RUNNER_TEMP/base.txt" "$RUNNER_TEMP/head.txt" | tee "$RUNNER_TEMP/diff.txt"
+        shell: bash
+
+      # 解析 benchstat 输出，若任意基准时间/内存劣化超过 10% 则打印警告
+      # （非阻塞：exit 0，避免 CI 因偶发噪声中断合并流程）
+      - name: Warn on regressions > 10%
+        if: github.event_name == 'pull_request'
+        run: |
+          if [ ! -f "$RUNNER_TEMP/diff.txt" ]; then
+            echo "No diff to analyze."
+            exit 0
+          fi
+          # benchstat 在列末输出 "~"（无统计意义）或 "+X.XX%" / "-X.XX% "
+          # 匹配明确劣化（以 + 开头的百分比，表示时间/内存增加）且变化 > 10%
+          REGRESSIONS=$(grep -E '\+[0-9]+\.[0-9]+%' "$RUNNER_TEMP/diff.txt" | \
+            awk '{
+              for (i=1; i<=NF; i++) {
+                if ($i ~ /^\+[0-9]+\.[0-9]+%$/) {
+                  pct = $i
+                  sub(/^\+/, "", pct)
+                  sub(/%$/, "", pct)
+                  if (pct+0 > 10) { print; break }
+                }
+              }
+            }' || true)
+          if [ -n "$REGRESSIONS" ]; then
+            echo "⚠️  以下基准劣化超过 10%（非阻塞警告）："
+            echo "$REGRESSIONS"
+          else
+            echo "✅ 无显著性能劣化（阈值 10%）"
+          fi
+        shell: bash
+
+      # ── 上传 artifact，供汇总 job 统一提交 ───────────────────────────────
+      - name: Upload artifact
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          # Artifact 名固定为 bench-{os}-{arch}，汇总 job 按此名批量下载
+          name: bench-${{ matrix.os }}-${{ matrix.arch }}
+          path: |
+            ${{ runner.temp }}/head.txt
+            ${{ runner.temp }}/base.txt
+            ${{ runner.temp }}/diff.txt
+          retention-days: 90
+
+  # ── 第二阶段：汇总 job，等所有矩阵完成后一次性推送到 bench 分支 ────────────
+  #
+  # bench 分支目录结构：
+  #   main/                  ← push to main 时更新
+  #     ubuntu-latest-amd64.txt
+  #     windows-latest-amd64.txt
+  #     ubuntu-24.04-arm-arm64.txt
+  #     macos-latest-arm64.txt
+  #   pr-{N}/                ← PR 时写入，N 为 PR 编号
+  #     {os}-{arch}.txt
+  #   manual/YYYYMMDD/       ← 手动触发时写入
+  #     {os}-{arch}.txt
+  #
+  # bench 分支为孤立分支，不存在时由本 job 自动创建。
+  save:
+    needs: bench
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      # 下载所有平台的 artifact，各解压到 artifacts/bench-{os}-{arch}/ 目录
+      - name: Download all artifacts
+        uses: actions/download-artifact@v8
+        with:
+          pattern: bench-*
+          path: artifacts/
+
+      # 确定目标目录并一次性提交到 bench 分支（不存在则自动创建孤立分支）
+      - name: Push results to bench branch
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            DEST="pr-${{ github.event.pull_request.number }}"
+          elif [ "${{ github.event_name }}" = "push" ]; then
+            DEST="main"
+          else
+            DEST="manual/$(date -u +%Y%m%d)"
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          # 切换到 bench 分支；远程不存在时创建孤立分支
+          if git fetch origin bench 2>/dev/null; then
+            git checkout bench
+          else
+            git checkout --orphan bench
+            git rm -rf . --quiet || true
+          fi
+
+          mkdir -p "$DEST"
+
+          # artifacts/ 结构：artifacts/bench-{os}-{arch}/head.txt
+          for dir in artifacts/bench-*/; do
+            name="${dir#artifacts/bench-}"
+            name="${name%/}"
+            [ -f "$dir/head.txt" ] && cp "$dir/head.txt" "$DEST/${name}.txt"
+            [ -f "$dir/base.txt" ] && cp "$dir/base.txt" "$DEST/${name}-base.txt"
+            [ -f "$dir/diff.txt" ] && cp "$dir/diff.txt" "$DEST/${name}-diff.txt"
+          done
+
+          git add "$DEST/"
+          git diff --cached --quiet && echo "No changes to commit." && exit 0
+
+          git commit -m "bench: $DEST (run=${{ github.run_id }} sha=${{ github.sha }}) [skip ci]"
+
+          git push origin bench
+        shell: bash
