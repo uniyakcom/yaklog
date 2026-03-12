@@ -1,0 +1,7 @@
+# os:     ubuntu-latest
+# arch:   amd64
+# kernel: Linux 6.14.0-1017-azure x86_64
+# go:     go version go1.25.7 linux/amd64
+# sha:    93303f65d5b62395e1ae783cce205c55479a2829
+# ref:    refs/heads/main
+# date:   2026-03-12T02:44:30Z

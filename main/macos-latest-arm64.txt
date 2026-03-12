@@ -1,0 +1,7 @@
+# os:     macos-latest
+# arch:   arm64
+# kernel: Darwin 24.6.0 arm64
+# go:     go version go1.25.7 darwin/arm64
+# sha:    93303f65d5b62395e1ae783cce205c55479a2829
+# ref:    refs/heads/main
+# date:   2026-03-12T02:49:22Z

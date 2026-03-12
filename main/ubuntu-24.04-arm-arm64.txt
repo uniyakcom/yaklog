@@ -1,0 +1,7 @@
+# os:     ubuntu-24.04-arm
+# arch:   arm64
+# kernel: Linux 6.14.0-1017-azure aarch64
+# go:     go version go1.25.8 linux/arm64
+# sha:    93303f65d5b62395e1ae783cce205c55479a2829
+# ref:    refs/heads/main
+# date:   2026-03-12T02:49:00Z

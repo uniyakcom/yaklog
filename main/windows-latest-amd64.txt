@@ -1,0 +1,7 @@
+# os:     windows-latest
+# arch:   amd64
+# kernel: MINGW64_NT-10.0-26100 3.6.6-1cdd4371.x86_64 x86_64
+# go:     go version go1.25.7 windows/amd64
+# sha:    93303f65d5b62395e1ae783cce205c55479a2829
+# ref:    refs/heads/main
+# date:   2026-03-12T02:44:42Z
