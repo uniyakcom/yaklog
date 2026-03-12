@@ -1,5 +1,7 @@
 package yaklog
 
+import "sync"
+
 // noCopy 禁止拷贝哨兵。
 //
 // 嵌入到不应被拷贝的结构体中（如包含互斥锁或 goroutine 的类型），
@@ -18,3 +20,6 @@ func (*noCopy) Lock() {}
 
 // Unlock 满足 sync.Locker 接口。
 func (*noCopy) Unlock() {}
+
+// 编译期验证：noCopy 实现 sync.Locker 接口。
+var _ sync.Locker = (*noCopy)(nil)
