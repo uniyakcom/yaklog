@@ -2,5 +2,5 @@ github.com/uniyakcom/yakhash v1.1.2 h1:KCUelyUIOZIVe89ke90pnVyoQCS98UNWMXApfW6HI
 github.com/uniyakcom/yakhash v1.1.2/go.mod h1:y/VaGdLI1Fy0u2Bd0bePPWNqbCiejTcJ9SnoHEe6ab4=
 github.com/uniyakcom/yakjson v1.4.6 h1:PX14aWOt767GESJp2JU6e7rq+wM6Ftvsa+4oNhm5weg=
 github.com/uniyakcom/yakjson v1.4.6/go.mod h1:tFMn18lZDVIJneb3i2CdlW7sJDyRF6NfV/nO/kUGnVg=
-github.com/uniyakcom/yakutil v1.3.3 h1:PC4h6rxwbxfria8nDT4aRQOf9zYoN+2Ya3PRk5WFqfg=
-github.com/uniyakcom/yakutil v1.3.3/go.mod h1:FV/A2sGyOrN4eXtMmu4RXL8QzrhL72TB95Z8SfzitEk=
+github.com/uniyakcom/yakutil v1.5.0 h1:d5lXtDqj0t4i7506PtfhhL/Vz0LW0twMsE8Ng2i2Tx8=
+github.com/uniyakcom/yakutil v1.5.0/go.mod h1:FV/A2sGyOrN4eXtMmu4RXL8QzrhL72TB95Z8SfzitEk=

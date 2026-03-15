@@ -9,7 +9,7 @@ require (
 
 require (
 	github.com/uniyakcom/yakjson v1.4.6 // indirect
-	github.com/uniyakcom/yakutil v1.3.3 // indirect
+	github.com/uniyakcom/yakutil v1.5.0 // indirect
 )
 
 replace github.com/uniyakcom/yaklog => ../
